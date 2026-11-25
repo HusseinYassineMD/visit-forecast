@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinical Team Visit Forecast · CPBH</title>
+  <meta name="description" content="Monthly clinical visit forecast across DHA/PE4, DBS, and VISTA." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="page-bg" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-mark">CPBH</span>
+      <div>
+        <p class="eyebrow">USC Clinical Research Operations</p>
+        <h1>Visit Forecast</h1>
+      </div>
+    </div>
+    <div class="header-meta">
+      <span id="as-of">As of —</span>
+      <span id="horizon" class="pill">—</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-copy">
+        <h2>Clinical team workload by month</h2>
+        <p>
+          Combined forecast for <strong>DHA/PE4</strong> (Ivett), <strong>DBS</strong> year 3–4 pending visits,
+          and <strong>VISTA</strong> screening → baseline → pharmacy handoff.
+        </p>
+      </div>
+      <div class="kpi-grid" id="kpi-grid"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Estimated clinical visits by month</h3>
+          <p class="muted">DBS events = Y3 × 2 (MRI/BD + NP/CV) + Y4 × 1</p>
+        </div>
+        <div class="legend" id="chart-legend"></div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="monthly-chart" height="120"></canvas>
+      </div>
+    </section>
+
+    <section class="panel warn" id="backlog-panel" hidden>
+      <div class="panel-head">
+        <div>
+          <h3>Backlog (due before Nov 2026)</h3>
+          <p class="muted" id="backlog-note"></p>
+        </div>
+      </div>
+      <div class="kpi-grid compact" id="backlog-kpis"></div>
+    </section>
+
+    <nav class="tabs" role="tablist" aria-label="Study detail">
+      <button class="tab active" data-tab="overview" role="tab" aria-selected="true">Overview</button>
+      <button class="tab" data-tab="dha" role="tab">DHA / PE4</button>
+      <button class="tab" data-tab="dbs" role="tab">DBS</button>
+      <button class="tab" data-tab="vista" role="tab">VISTA</button>
+      <button class="tab" data-tab="sources" role="tab">Sources</button>
+    </nav>
+
+    <section class="tab-panel active" id="tab-overview" role="tabpanel">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Monthly detail</h3>
+          <p class="muted">Peak months highlighted</p>
+        </div>
+        <div class="table-scroll">
+          <table id="overview-table">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th class="num">DHA</th>
+                <th class="num">PE4</th>
+                <th class="num">DBS Y3</th>
+                <th class="num">DBS Y4</th>
+                <th class="num">DBS events</th>
+                <th class="num">Vista</th>
+                <th class="num">Total</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-dha" role="tabpanel" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3>DHA / PE4 — Ivett forecast</h3>
+            <p class="muted">From Scheduling Notes tab · 1 PT visit per Month Due</p>
+          </div>
+          <div class="filters">
+            <select id="dha-month-filter">
+              <option value="all">All months</option>
+            </select>
+            <select id="dha-study-filter">
+              <option value="all">All studies</option>
+              <option value="DHA">DHA</option>
+              <option value="PE4">PE4</option>
+            </select>
+            <select id="dha-status-filter">
+              <option value="all">All statuses</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="Needs scheduling">Needs scheduling</option>
+            </select>
+            <input type="search" id="dha-search" placeholder="Search ID…" />
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table id="dha-table">
+            <thead>
+              <tr>
+                <th>Month Due</th>
+                <th>Study</th>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Visit Date</th>
+                <th>Modality</th>
+                <th>Staff</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-dbs" role="tabpanel" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3>DBS pending Year 3 / Year 4</h3>
+            <p class="muted">Pending = NP not logged / not on Completed list</p>
+          </div>
+          <div class="filters">
+            <select id="dbs-month-filter">
+              <option value="all">All months</option>
+            </select>
+            <select id="dbs-year-filter">
+              <option value="all">All years</option>
+              <option value="Year 3">Year 3</option>
+              <option value="Year 4">Year 4</option>
+            </select>
+            <input type="search" id="dbs-search" placeholder="Search ID…" />
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table id="dbs-table">
+            <thead>
+              <tr>
+                <th>Month Due</th>
+                <th>Year</th>
+                <th>ID</th>
+                <th>Visit bundle</th>
+                <th class="num">Events</th>
+                <th>MRI date</th>
+                <th>NP date</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-vista" role="tabpanel" hidden>
+      <div class="vista-grid">
+        <div class="panel">
+          <div class="panel-head"><h3>Enrollment snapshot</h3></div>
+          <div class="kpi-grid compact" id="vista-kpis"></div>
+          <ol class="pathway" id="vista-pathway"></ol>
+          <p class="muted" id="vista-note"></p>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Estimated clinical visits</h3>
+            <p class="muted">Provisional until Sahar tracker attached</p>
+          </div>
+          <div class="table-scroll">
+            <table id="vista-table">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th class="num">Screening</th>
+                  <th class="num">Virtual baseline</th>
+                  <th class="num">Pharmacy handoffs</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-sources" role="tabpanel" hidden>
+      <div class="panel">
+        <div class="panel-head"><h3>Sources & contacts</h3></div>
+        <div class="table-scroll">
+          <table id="sources-table">
+            <thead>
+              <tr>
+                <th>Study</th>
+                <th>Owner</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <ul class="assumptions">
+          <li>DHA/PE4 counts = participants with Month Due in Ivett’s Scheduling Notes (dropout excluded).</li>
+          <li>DBS Y3 pending: on Completed Visits Y3 schedule, NP not logged. Est. events = 2.</li>
+          <li>DBS Y4 pending: on Y4 schedule, not completed. Est. events = 1.</li>
+          <li>VISTA monthly placement is estimated from the Nov 25 enrollment update.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>CPBH Visit Forecast · Built from Ivett DHA/PE4 tracker, DBS Tracker, and Sahar VISTA update</p>
+  </footer>
+</body>
+</html>
